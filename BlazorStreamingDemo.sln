@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34316.72
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorStreamingDemo", "BlazorStreamingDemo\BlazorStreamingDemo\BlazorStreamingDemo.csproj", "{14E4FED3-3786-467E-81C4-0C22C3F7F62D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorStreamingDemo.Client", "BlazorStreamingDemo\BlazorStreamingDemo.Client\BlazorStreamingDemo.Client.csproj", "{06E93193-CCBB-4BDE-B54D-EF3FCA2612E4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{14E4FED3-3786-467E-81C4-0C22C3F7F62D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14E4FED3-3786-467E-81C4-0C22C3F7F62D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14E4FED3-3786-467E-81C4-0C22C3F7F62D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14E4FED3-3786-467E-81C4-0C22C3F7F62D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06E93193-CCBB-4BDE-B54D-EF3FCA2612E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06E93193-CCBB-4BDE-B54D-EF3FCA2612E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06E93193-CCBB-4BDE-B54D-EF3FCA2612E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06E93193-CCBB-4BDE-B54D-EF3FCA2612E4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {45ACDBD4-6688-4A0B-BD78-67C9AEF989BD}
+	EndGlobalSection
+EndGlobal
