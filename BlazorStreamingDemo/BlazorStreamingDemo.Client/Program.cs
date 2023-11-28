@@ -1,9 +1,9 @@
 global using BlazorStreamingDemo.Client;
 global using BlazorStreamingDemo.Client.Services;
-using Grpc.Net.Client.Web;
-using Grpc.Net.Client;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Grpc.Net.Client.Web;
+using Grpc.Net.Client;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddHttpClient("BlazorStreamingDemo.ServerAPI",

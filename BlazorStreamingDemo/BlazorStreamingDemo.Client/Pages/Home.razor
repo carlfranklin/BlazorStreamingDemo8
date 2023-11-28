@@ -1,109 +1,144 @@
 ﻿@page "/"
-@inject ApiService apiService
-@inject People.PeopleClient peopleClient
-@inject NavigationManager navigationManager
+@using System.Threading.Channels
+@inject NavigationManager NavigationManager
+@inject ApiService ApiService
+@inject People.PeopleClient PeopleClient
 
-<h1>API vs gRPC in .NET 8</h1>
+<h1>Streaming Three Ways in .NET 8</h1>
+<div>
+    <button @onclick="GetChannelStream">@channelButtonText</button>
+    <span> @channelMessage</span>
+</div>
+
+<div>
+    <button @onclick="GetAsyncStream">@asyncButtonText</button>
+    <span>@asyncMessage</span>
+</div>
+
+<div>
+    <button @onclick="StreamChannelToServer">@sendChannelButtonText</button>
+    <span>@receiveChannelMessage</span>
+</div>
+
+<div>
+    <button @onclick="StreamAsyncToServer">@sendAsyncButtonText</button>
+    <span>@receiveAsyncMessage</span>
+</div>
+<br/>
 
 <button @onclick="APIButtonClicked">Test API</button>
-<br />
-<p>@APIResult</p>
-<br />
-
 <button @onclick="APIStreamButtonClicked">Test API Stream</button>
-<br />
-<p>@APIStreamResult</p>
-<br />
-
 <button @onclick="GRPCButtonClicked">Test gRPC</button>
-<br />
-<p>@GRPCResult</p>
-<br />
-
 <button @onclick="GRPCStreamButtonClicked">Test gRPC Stream</button>
 <br />
-<p>@GRPCStreamResult</p>
-<br />
+<p>@APIResult</p>
 
-<button @onclick="GoToStreamingUIPage">Streaming UI Test</button>
-<br />
-<br />
+<select size=20 style="width:100%;">
+    @foreach (var person in People)
+    {
+        <option>@person.FirstName @person.LastName</option>
+    }
+</select>
 
 @code
 {
     string APIResult = "";
-    string APIStreamResult = "";
-    string GRPCResult = "";
-    string GRPCStreamResult = "";
-    string PersonResult = "";
-    List<Person> People;
-
-    void GoToStreamingUIPage()
-    {
-        navigationManager.NavigateTo("/streamingui");
-    }
+    List<Person> People { get; set; } = new List<Person>();
 
     async Task APIButtonClicked()
     {
         // set up
+        People.Clear();
+        await Task.Delay(1);
         APIResult = "Loading...";
         await InvokeAsync(StateHasChanged);
 
         // start time
         var startTime = DateTime.Now;
 
-        // wait for all records to be received
-        People = await apiService.GetAll();
+        // wait for all records
+        People = await ApiService.GetAll();
         if (People != null)
         {
-            // show elapsed time
+            // elapsed time
             var elapsed = DateTime.Now.Subtract(startTime);
             APIResult = $"{People.Count} records returned via API in {elapsed.TotalMilliseconds} ms.";
+            await InvokeAsync(StateHasChanged);
         }
     }
 
     async Task APIStreamButtonClicked()
     {
         // set up
-        People = new List<Person>();
-        APIStreamResult = "Loading...";
+        People.Clear();
+        await Task.Delay(1);
+        APIResult = "Loading...";
         await InvokeAsync(StateHasChanged);
 
         // start time
+        double elapsed20 = 0;
         var startTime = DateTime.Now;
 
         // await foreach is used on an IAsyncEnumerable
         // which returns items one at a time using 'yield return'
-        await foreach (var person in apiService.GetAllStream())
+        await foreach (var person in ApiService.GetAllStream())
         {
-            // add this person to our list
+            // Add this person to the list
             People.Add(person);
+
+            // have we reached 20 yet?
+            if (People.Count == 20)
+            {
+                // yes! That's enough to fill up the <select>
+                elapsed20 = DateTime.Now.Subtract(startTime).TotalMilliseconds;
+                APIResult = $"Loading ({elapsed20} ms)...{People.Count}";
+
+                // refresh the page
+                await InvokeAsync(StateHasChanged);
+
+                // we need this because we're in a tight loop.
+                // give the UI a chance to re-render
+                await Task.Delay(1);
+            }
+
+            // Is the count evenly divisible by 100?
+            else if (People.Count % 100 == 0)
+            {
+                // yes! refresh the UI.
+                APIResult = $"Loading ({elapsed20} ms)...{People.Count}";
+                await InvokeAsync(StateHasChanged);
+                await Task.Delay(1);
+            }
         }
 
         // show elapsed time
         var elapsed = DateTime.Now.Subtract(startTime);
-        APIStreamResult = $"{People.Count} records returned via API Stream in {elapsed.TotalMilliseconds} ms.";
+        APIResult = $"{People.Count} records returned via API Stream in {elapsed.TotalMilliseconds} ms. "
+            + $" Initial 20 in {elapsed20} ms.";
     }
 
     async Task GRPCButtonClicked()
     {
         // set up
-        GRPCResult = "Loading...";
+        People.Clear();
+        await Task.Delay(1);
+        APIResult = "Loading...";
         await InvokeAsync(StateHasChanged);
 
         // start time
         var startTime = DateTime.Now;
 
-        // get the PeopleResponse from gRPC
-        var response = await peopleClient.GetAllAsync(new GetAllPeopleRequest());
-        if (response != null)
+        // wait for the entire list
+        var result = await PeopleClient.GetAllAsync(new GetAllPeopleRequest());
+        if (result != null)
         {
-            // set the list
-            People = response.People.ToList();
+            // Add to our list
+            People.AddRange(result.People.ToList());
 
             // show elapsed time
             var elapsed = DateTime.Now.Subtract(startTime);
-            GRPCResult = $"{People.Count} records returned via gRPC in {elapsed.TotalMilliseconds} ms.";
+            APIResult = $"{People.Count} records returned via gRPC in {elapsed.TotalMilliseconds} ms.";
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -111,8 +146,10 @@
     {
         // set up
         var token = new System.Threading.CancellationToken();
-        People = new List<Person>();
-        GRPCStreamResult = "Loading...";
+        double elapsed20 = 0;
+        People.Clear();
+        APIResult = "Loading...";
+        await Task.Delay(1);
         await InvokeAsync(StateHasChanged);
 
         // start time
@@ -120,17 +157,236 @@
 
         // the client-side for gRPC streams is a bit different.
         // First we return an AsyncServerStreamingCall<Person>
-        using var call = peopleClient.GetAllStream(new GetAllPeopleRequest());
+        using var call = PeopleClient.GetAllStream(new GetAllPeopleRequest());
 
-        // now we can iterate over the ResponseStream
+        // Now we can iterate through the response stream
         while (await call.ResponseStream.MoveNext(token))
         {
-            // Add this person to our list
+            // add this person to our list
             People.Add(call.ResponseStream.Current);
+
+            // have we reached 20 yet?
+            if (People.Count == 20)
+            {
+                // yes! That's enough to fill up the <select>
+                elapsed20 = DateTime.Now.Subtract(startTime).TotalMilliseconds;
+                APIResult = $"Loading ({elapsed20} ms)...{People.Count}";
+                // refresh the page
+                await InvokeAsync(StateHasChanged);
+                await Task.Delay(1);
+            }
+
+            // Is the count evenly divisible by 100?
+            else if (People.Count % 100 == 0)
+            {
+                // yes! refresh the UI.
+                APIResult = $"Loading ({elapsed20} ms)...{People.Count}";
+                await InvokeAsync(StateHasChanged);
+                await Task.Delay(1);
+            }
         }
 
-        // show elapsed time
+        // show elapsed time.
         var elapsed = DateTime.Now.Subtract(startTime);
-        GRPCStreamResult = $"{People.Count} records returned via gRPC Stream in {elapsed.TotalMilliseconds} ms.";
+        APIResult = $"{People.Count} records returned via gRPC Stream in {elapsed.TotalMilliseconds} ms. "
+            + $" Initial 20 in {elapsed20} ms.";
     }
+
+    // Make objects nullable.
+    // Check out The .NET Show episode 15 "It's a Nullable World"
+    // at https://thedotnetshow.com
+    private HubConnection? hubConnection;
+
+    #region "Stream Channel from server to client"
+    private CancellationTokenSource? channelCancellationTokenSource;
+    private string channelMessage = "";
+    private string channelButtonText = "Get Channel Stream";
+    private async Task GetChannelStream()
+    {
+        // It's a nullable world!
+        if (hubConnection is null) return;
+
+        // Ready to roll?
+        @if (channelButtonText == "Get Channel Stream")
+        {
+            // Change to "Stop"
+            channelButtonText = "Stop";
+
+            // the cancellationToken lets us stop the stream download
+            channelCancellationTokenSource = new CancellationTokenSource();
+
+            // Create the channel from the hub
+            // specifying we want to receive 10 consecutive ints
+            // exactly 500ms apart.
+            var channel = await hubConnection.StreamAsChannelAsync<int>(
+                "GetChannelStream", 10, 500, channelCancellationTokenSource.Token);
+
+            // Wait asynchronously for data to become available
+            while (await channel.WaitToReadAsync())
+            {
+                // Read all currently available data synchronously, before waiting for more data
+                while (channel.TryRead(out var count))
+                {
+                    // change the message string
+                    channelMessage = $"Received {count}";
+                    // tell Blazor to render the page
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        else
+        {
+            // Stop the stream
+            channelCancellationTokenSource?.Cancel();
+        }
+
+        // Reset the button text
+        channelButtonText = "Get Channel Stream";
+        channelMessage = "";
+    }
+    #endregion
+
+    #region Stream Async stream from server to client
+    private CancellationTokenSource? asyncCancellationTokenSource;
+    private string asyncMessage = "";
+    private string asyncButtonText = "Get Async Stream";
+
+    private async Task GetAsyncStream()
+    {
+        // It's a nullable world!
+        if (hubConnection is null) return;
+
+        // Ready to roll?
+        @if (asyncButtonText == "Get Async Stream")
+        {
+            // Change to "Stop"
+            asyncButtonText = "Stop";
+
+            // the cancellationToken lets us stop the stream download
+            asyncCancellationTokenSource = new CancellationTokenSource();
+
+            // Create the stream from the hub
+            // specifying we want to receive 10 consecutive ints
+            // exactly 500ms apart.
+            var stream = hubConnection.StreamAsync<int>(
+                "GetAsyncStream", 10, 500, asyncCancellationTokenSource.Token);
+
+            // display the values as they are received
+            await foreach (var count in stream)
+            {
+                // change the message string
+                asyncMessage = $"Received {count}";
+                // tell Blazor to render the page
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        else
+        {
+            // Stop the stream
+            asyncCancellationTokenSource?.Cancel();
+        }
+
+        // Reset the button text
+        asyncButtonText = "Get Async Stream";
+        asyncMessage = "";
+    }
+    #endregion
+
+    #region Stream Channel from client to server
+
+    private string receiveChannelMessage = "";
+    private bool sendChannelCancelled = false;
+    private string sendChannelButtonText = "Stream Channel to Server";
+
+    private async Task StreamChannelToServer()
+    {
+        // It's a nullable world!
+        if (hubConnection is null) return;
+        @if (sendChannelButtonText == "Stream Channel to Server")
+        {
+            sendChannelButtonText = "Stop Sending";
+
+            // Create a channel with no end
+            var channel = Channel.CreateUnbounded<string>();
+
+            await hubConnection.SendAsync("UploadStreamToChannel", channel.Reader);
+            sendChannelCancelled = false;
+            while (!sendChannelCancelled)
+            {
+                string value = "Channel " + DateTime.Now.ToString();
+                await channel.Writer.WriteAsync(value);
+                await Task.Delay(1000);
+            }
+
+            channel.Writer.Complete();
+        }
+        else
+        {
+            sendChannelCancelled = true;
+            sendChannelButtonText = "Stream Channel to Server";
+            receiveChannelMessage = "";
+
+        }
+    }
+    #endregion
+
+    #region Stream Async stream from client to server
+
+    private string receiveAsyncMessage = "";
+    private bool sendAsyncCancelled = false;
+    private string sendAsyncButtonText = "Stream Async to Server";
+
+    private async Task StreamAsyncToServer()
+    {
+        // It's a nullable world!
+        if (hubConnection is null) return;
+        @if (sendAsyncButtonText == "Stream Async to Server")
+        {
+            sendAsyncButtonText = "Stop Sending";
+            await hubConnection.SendAsync("UploadAsyncStream", ClientStreamData());
+        }
+        else
+        {
+            sendAsyncCancelled = true;
+            sendAsyncButtonText = "Stream Async to Server";
+        }
+    }
+
+    private async IAsyncEnumerable<string> ClientStreamData()
+    {
+        sendAsyncCancelled = false;
+        while (!sendAsyncCancelled)
+        {
+            string value = "Async " + DateTime.Now.ToString();
+            yield return value;
+            await Task.Delay(1000);
+        }
+    }
+    #endregion
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Create the hubConection
+        hubConnection = new HubConnectionBuilder()
+           .WithUrl(NavigationManager.ToAbsoluteUri("/streamhub"))
+           .Build();
+
+        // Start the hub Connection (connects to the hub);
+        await hubConnection.StartAsync();
+
+        // Handles receiving channel data
+        hubConnection.On<string>("ReceiveChannelStreamData", async (message) =>
+        {
+            receiveChannelMessage = message;
+            await InvokeAsync(StateHasChanged);
+        });
+
+        // Handles receiving async stream data
+        hubConnection.On<string>("ReceiveAsyncStreamData", async (message) =>
+        {
+            receiveAsyncMessage = message;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
 }

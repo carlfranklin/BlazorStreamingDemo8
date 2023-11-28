@@ -9,6 +9,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\BlazorStreamingDemo.Client\BlazorStreamingDemo.Client.csproj" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.0" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.0" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="Grpc.AspNetCore" Version="2.59.0" />
 		<PackageReference Include="Grpc.AspNetCore.Web" Version="2.59.0" />

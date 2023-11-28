@@ -2,10 +2,8 @@ global using BlazorStreamingDemo.Client;
 global using BlazorStreamingDemo.Client.Services;
 global using BlazorStreamingDemo.Server.Data;
 using BlazorStreamingDemo.Components;
-using BlazorStreamingDemo.Server.Data;
 using Grpc.Net.Client.Web;
 using Grpc.Net.Client;
-using Microsoft.AspNetCore.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,8 +22,8 @@ builder.Services.AddHttpClient("MyApiClient", client =>
 
 builder.Services.AddSingleton<ApiService>();
 builder.Services.AddGrpc();
-builder.Services.AddSingleton<PersonsManager>();
 
+builder.Services.AddSingleton<PersonsManager>();
 builder.Services.AddControllers();
 
 builder.Services.AddSingleton(services =>
@@ -37,6 +35,8 @@ builder.Services.AddSingleton(services =>
         new GrpcChannelOptions { HttpClient = httpClient });
     return new People.PeopleClient(channel);
 });
+
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -66,5 +66,7 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(BlazorStreamingDemo.Client._Imports).Assembly);
+
+app.MapHub<StreamHub>("/StreamHub");
 
 app.Run();
