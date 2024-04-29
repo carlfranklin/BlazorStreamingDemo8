@@ -1,0 +1,224 @@
+﻿@page "/"
+@inject NavigationManager NavigationManager
+
+<PageTitle>Index</PageTitle>
+
+<button @onclick="GetChannelStream">@channelButtonText</button>
+<br />
+<div>@channelMessage</div>
+<br />
+
+<button @onclick="GetAsyncStream">@asyncButtonText</button>
+<br />
+<div>@asyncMessage</div>
+<br />
+
+<button @onclick="StreamChannelToServer">@sendChannelButtonText</button>
+<br />
+<div>@receiveChannelMessage</div>
+<br />
+
+<button @onclick="StreamAsyncToServer">@sendAsyncButtonText</button>
+<br />
+<div>@receiveAsyncMessage</div>
+<br />
+
+@code
+{
+    // Make objects nullable.
+    // Check out The .NET Show episode 15 "It's a Nullable World"
+    // at https://thedotnetshow.com
+    private HubConnection? hubConnection;
+
+    #region "Stream Channel from server to client"
+    private CancellationTokenSource? channelCancellationTokenSource;
+    private string channelMessage = "";
+    private string channelButtonText = "Get Channel Stream";
+    private async Task GetChannelStream()
+    {
+        // It's a nullable world!
+        if (hubConnection is null) return;
+
+        // Ready to roll?
+        @if (channelButtonText == "Get Channel Stream")
+        {
+            // Change to "Stop"
+            channelButtonText = "Stop";
+
+            // the cancellationToken lets us stop the stream download
+            channelCancellationTokenSource = new CancellationTokenSource();
+
+            // Create the channel from the hub
+            // specifying we want to receive 10 consecutive ints
+            // exactly 500ms apart.
+            var channel = await hubConnection.StreamAsChannelAsync<int>(
+                "GetChannelStream", 10, 500, channelCancellationTokenSource.Token);
+
+            // Wait asynchronously for data to become available
+            while (await channel.WaitToReadAsync())
+            {
+                // Read all currently available data synchronously, before waiting for more data
+                while (channel.TryRead(out var count))
+                {
+                    // change the message string
+                    channelMessage = $"Received {count}";
+                    // tell Blazor to render the page
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        else
+        {
+            // Stop the stream
+            channelCancellationTokenSource?.Cancel();
+        }
+
+        // Reset the button text
+        channelButtonText = "Get Channel Stream";
+        channelMessage = "";
+    }
+    #endregion
+
+    #region Stream Async stream from server to client
+    private CancellationTokenSource? asyncCancellationTokenSource;
+    private string asyncMessage = "";
+    private string asyncButtonText = "Get Async Stream";
+
+    private async Task GetAsyncStream()
+    {
+        // It's a nullable world!
+        if (hubConnection is null) return;
+
+        // Ready to roll?
+        @if (asyncButtonText == "Get Async Stream")
+        {
+            // Change to "Stop"
+            asyncButtonText = "Stop";
+
+            // the cancellationToken lets us stop the stream download
+            asyncCancellationTokenSource = new CancellationTokenSource();
+
+            // Create the stream from the hub
+            // specifying we want to receive 10 consecutive ints
+            // exactly 500ms apart.
+            var stream = hubConnection.StreamAsync<int>(
+                "GetAsyncStream", 10, 500, asyncCancellationTokenSource.Token);
+
+            // display the values as they are received
+            await foreach (var count in stream)
+            {
+                // change the message string
+                asyncMessage = $"Received {count}";
+                // tell Blazor to render the page
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        else
+        {
+            // Stop the stream
+            asyncCancellationTokenSource?.Cancel();
+        }
+
+        // Reset the button text
+        asyncButtonText = "Get Async Stream";
+        asyncMessage = "";
+    }
+    #endregion
+
+    #region Stream Channel from client to server
+
+    private string receiveChannelMessage = "";
+    private bool sendChannelCancelled = false;
+    private string sendChannelButtonText = "Stream Channel to Server";
+
+    private async Task StreamChannelToServer()
+    {
+        // It's a nullable world!
+        if (hubConnection is null) return;
+        @if (sendChannelButtonText == "Stream Channel to Server")
+        {
+            sendChannelButtonText = "Stop Sending";
+
+            // Create a channel with no end
+            var channel = Channel.CreateUnbounded<string>();
+
+            await hubConnection.SendAsync("UploadStreamToChannel", channel.Reader);
+            sendChannelCancelled = false;
+            while (!sendChannelCancelled)
+            {
+                string value = "Channel " + DateTime.Now.ToString();
+                await channel.Writer.WriteAsync(value);
+                await Task.Delay(1000);
+            }
+
+            channel.Writer.Complete();
+        }
+        else
+        {
+            sendChannelCancelled = true;
+            sendChannelButtonText = "Stream Channel to Server";
+            receiveChannelMessage = "";
+
+        }
+    }
+    #endregion
+
+    #region Stream Async stream from client to server
+
+    private string receiveAsyncMessage = "";
+    private bool sendAsyncCancelled = false;
+    private string sendAsyncButtonText = "Stream Async to Server";
+
+    private async Task StreamAsyncToServer()
+    {
+        // It's a nullable world!
+        if (hubConnection is null) return;
+        @if (sendAsyncButtonText == "Stream Async to Server")
+        {
+            sendAsyncButtonText = "Stop Sending";
+            await hubConnection.SendAsync("UploadAsyncStream", ClientStreamData());
+        }
+        else
+        {
+            sendAsyncCancelled = true;
+            sendAsyncButtonText = "Stream Async to Server";
+        }
+    }
+
+    private async IAsyncEnumerable<string> ClientStreamData()
+    {
+        sendAsyncCancelled = false;
+        while (!sendAsyncCancelled)
+        {
+            string value = "Async " + DateTime.Now.ToString();
+            yield return value;
+            await Task.Delay(1000);
+        }
+    }
+    #endregion
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Create the hubConection
+        hubConnection = new HubConnectionBuilder()
+           .WithUrl(NavigationManager.ToAbsoluteUri("/streamhub"))
+           .Build();
+
+        // Start the hub Connection (connects to the hub);
+        await hubConnection.StartAsync();
+
+        // Handles receiving channel data
+        hubConnection.On<string>("ReceiveChannelStreamData", async (message) =>
+        {
+            receiveChannelMessage = message;
+            await InvokeAsync(StateHasChanged);
+        });
+
+        // Handles receiving async stream data
+        hubConnection.On<string>("ReceiveAsyncStreamData", async (message) =>
+        {
+            receiveAsyncMessage = message;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+}

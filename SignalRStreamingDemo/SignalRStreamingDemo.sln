@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignalRStreamingDemo", "SignalRStreamingDemo\SignalRStreamingDemo\SignalRStreamingDemo.csproj", "{43E760CD-383C-4103-BFCD-5834F3519806}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignalRStreamingDemo.Client", "SignalRStreamingDemo\SignalRStreamingDemo.Client\SignalRStreamingDemo.Client.csproj", "{C56D4656-47D9-4731-96A4-4C054D77DA29}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{43E760CD-383C-4103-BFCD-5834F3519806}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43E760CD-383C-4103-BFCD-5834F3519806}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43E760CD-383C-4103-BFCD-5834F3519806}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43E760CD-383C-4103-BFCD-5834F3519806}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C56D4656-47D9-4731-96A4-4C054D77DA29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C56D4656-47D9-4731-96A4-4C054D77DA29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C56D4656-47D9-4731-96A4-4C054D77DA29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C56D4656-47D9-4731-96A4-4C054D77DA29}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {373CA94A-CAA4-4B9B-8F87-BEF5E038964C}
+	EndGlobalSection
+EndGlobal
