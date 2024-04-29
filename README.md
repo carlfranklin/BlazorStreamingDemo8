@@ -2,6 +2,8 @@
 
 ### Overview
 
+This demo targets .NET 8. For the .NET 7 version, go to https://github.com/carlfranklin/BlazorStreamingDemo
+
 Before we talk about Blazor, SignalR, REST, or gRPC, let's talk about streaming.
 
 ##### Streaming is not System.IO.Stream
